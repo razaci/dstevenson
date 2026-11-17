@@ -16,7 +16,13 @@
 <div class="ed-eyebrow">DAVID STEVENSON TRUCKING • CHROME DISPATCH TOOL</div>
 <h2>🚛 LOAD HUNTER<br/>CHROME EXTENSION</h2>
 <p>The trucking load organizer now lives in its own Chrome extension — not inside this tribute website. Open Trulos, capture visible load listings, organize saved opportunities by trailer type, and compare estimated rates and operating costs.</p>
-<a class="ed-button" download="David_Stevenson_Trulos_Load_Hunter_4.zip" href="David_Stevenson_Trulos_Load_Hunter_4.zip">⬇ DOWNLOAD LOAD HUNTER EXTENSION</a>
+<button class="ed-button" id="findExtensionZip" type="button" style="cursor:pointer;border:0;font:inherit">⬇ FIND & DOWNLOAD LOAD HUNTER ZIP</button>
+<p id="zipStatus" role="status" aria-live="polite" class="ed-small">Finds matching ZIP files on GitHub Pages. For offline use, select a ZIP manually.</p>
+<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:12px auto">
+<button id="chooseLocalZip" type="button" style="background:#211016;border:1px solid #f66;color:#fff;padding:12px 18px;border-radius:9px;cursor:pointer">Choose ZIP on this computer</button>
+<a href="David_Stevenson_Trulos_Load_Hunter_4.zip" id="knownZip" download style="color:#ffc477;padding:12px">Download bundled extension</a>
+<input id="zipPicker" type="file" accept=".zip,application/zip" style="display:none" />
+</div>
 <p class="ed-small">Chrome for Windows • ZIP file included beside this HTML page • No CSV required</p>
 <div class="ed-steps"><strong>Install in Chrome:</strong> Download and extract the ZIP, open <code>chrome://extensions</code>, turn on Developer mode, choose <strong>Load unpacked</strong>, and select the extracted <code>Trulos_Load_Hunter_Extension</code> folder. Pin the extension, then open <a href="https://www.trulos.com/load-board/" rel="noopener" style="color:#ffaaa2" target="_blank">Trulos Load Board</a> to capture visible results.</div>
 <p class="ed-small">Automatic unattended searching of all Trulos loads is not enabled; authorized live-feed access would be needed for that capability.</p>
@@ -29,4 +35,39 @@
 
 
 
-</body></html>
+<script>
+(()=>{
+const status=document.getElementById('zipStatus'), button=document.getElementById('findExtensionZip');
+const say=(t)=>{status.textContent=t};
+const score=(name)=>{let n=name.toLowerCase();return (n.includes('load_hunter')||n.includes('load-hunter')||n.includes('load hunter')?10:0)+(n.includes('trulos')?5:0)+(n.includes('extension')?3:0)+(n.includes('david')?1:0)};
+const isZip=n=>/\.zip$/i.test(n);
+function download(url){const a=document.createElement('a');a.href=url;a.download=decodeURIComponent(url.split('/').pop().split('?')[0]);document.body.append(a);a.click();a.remove()}
+button.addEventListener('click',async()=>{
+ button.disabled=true;say('Looking for extension ZIP files…');
+ try{
+  if(location.protocol==='file:')throw Error('Local HTML cannot inspect folder contents. Use Choose ZIP on this computer, or the bundled extension link.');
+  let files=[];
+  if(location.hostname.endsWith('.github.io')){
+   const owner=location.hostname.split('.')[0],parts=location.pathname.split('/').filter(Boolean);
+   const repo=parts.length?parts[0]:owner+'.github.io';
+   const dir=parts.length?parts.slice(1,-1).join('/'):'';
+   const endpoint='https://api.github.com/repos/'+encodeURIComponent(owner)+'/'+encodeURIComponent(repo)+'/contents/'+dir;
+   const res=await fetch(endpoint,{headers:{Accept:'application/vnd.github+json'}});
+   if(!res.ok)throw Error('GitHub folder listing unavailable (HTTP '+res.status+').');
+   const items=await res.json();files=(Array.isArray(items)?items:[]).filter(x=>x.type==='file'&&isZip(x.name)).map(x=>({name:x.name,url:x.download_url}));
+  }else{
+   // A normal website does not expose a folder listing; check common names instead.
+   for(const name of ['David_Stevenson_Trulos_Load_Hunter_4.zip','David_Stevenson_Load_Hunter_Extension_Only.zip']){
+    try{const r=await fetch(encodeURIComponent(name),{method:'HEAD'});if(r.ok)files.push({name,url:encodeURIComponent(name)})}catch(e){}
+   }
+  }
+  files.sort((a,b)=>score(b.name)-score(a.name)||a.name.localeCompare(b.name));
+  if(!files.length)throw Error('No ZIP files found in the published folder. Upload the extension ZIP beside index.html.');
+  const best=files.find(x=>score(x.name)>0)||files[0];
+  say('Found '+files.length+' ZIP file(s). Downloading '+best.name+'.');download(best.url);
+ }catch(e){say(e.message+' You can still use the manual picker or bundled link.')}finally{button.disabled=false}
+});
+document.getElementById('chooseLocalZip').onclick=()=>document.getElementById('zipPicker').click();
+document.getElementById('zipPicker').addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;say('Selected '+f.name+'. This ZIP is already on your computer; extract it to install the extension.');});
+})();
+</script></body></html>
